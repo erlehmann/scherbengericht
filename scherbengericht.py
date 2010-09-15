@@ -89,7 +89,7 @@ while True:
                         sendchannel("/ban %s" % (nickname))
                         del hatevotes[nickname]
 
-            if (command == "!für"):
+            if (command == "!für" or command == "!fuer" or command == u"!für".encode('latin_1')):
                 if target in lovevotes.keys(): # vote pending
                     if user in lovevotes[target]:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
