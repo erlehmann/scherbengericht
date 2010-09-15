@@ -21,6 +21,7 @@
 import sys
 import socket
 import string
+import time
 
 HOST        = "irc.freenode.net"
 PORT        = 6667
@@ -29,6 +30,7 @@ IDENT       = "scherbengericht"
 REALNAME    = "ὀστρακισμός"
 CHANNEL     = "#twitter.de"
 VOTEQUOTA   = 0.01
+WAITTIME    = 2 # seconds to time.sleep() after each message so flood detection is not triggered
 
 s = socket.socket()
 
@@ -37,7 +39,7 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
-sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n")
+sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and time.sleep(WAITTIME)
 sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (VOTEQUOTA*100))
 
 readbuffer = ""
