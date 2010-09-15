@@ -40,7 +40,6 @@ s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
 sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and time.sleep(WAITTIME)
-sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (VOTEQUOTA*100))
 
 readbuffer = ""
 
@@ -66,6 +65,10 @@ while True:
             users = line[6:]
             print "%d other users in channel %s." % (len(users), CHANNEL)
 
+        # provide information about voting requirements
+        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (line[3][1:] == "!info"):
+            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(len(users)*VOTEQUOTA)))
+
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (len(line) >= 5):
             user = line[0]
             command = line[3][1:]
@@ -76,14 +79,15 @@ while True:
                     if user in hatevotes[target]:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
                     else:
-                        sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA)))
                         hatevotes[target].append(user)
+                        sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA) - len(hatevotes[target])))
+
                 else: # no vote
-                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA)))
+                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA) - 1))
                     hatevotes[target] = [user]
 
                 for nickname in hatevotes.keys():
-                    if len(hatevotes[nickname]) >= (len(users)*VOTEQUOTA):
+                    if len(hatevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
                         sendchannel("/deop %s" % (nickname))
                         sendchannel("/kick %s" % (nickname))
                         sendchannel("/ban %s" % (nickname))
@@ -94,13 +98,14 @@ while True:
                     if user in lovevotes[target]:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
                     else:
-                        s.send("PRIVMSG %s :Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA)))
                         lovevotes[target].append(user)
+                        s.send("PRIVMSG %s :Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA) - len(lovevotes[target])))
+
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA)))
+                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA) - 1))
                     lovevotes[target] = [user]
 
                 for nickname in lovevotes.keys():
-                    if len(lovevotes[nickname]) >= (len(users)*VOTEQUOTA):
+                    if len(lovevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
                         sendchannel("/op %s" % (nickname))
                         del lovevotes[nickname]
