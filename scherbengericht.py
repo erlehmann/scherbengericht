@@ -88,10 +88,16 @@ while True:
 
                 for nickname in hatevotes.keys():
                     if len(hatevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
-                        sendchannel("/deop %s" % (nickname))
-                        sendchannel("/kick %s" % (nickname))
-                        sendchannel("/ban %s" % (nickname))
-                        del hatevotes[nickname]
+                        if (nickname == NICK):
+                            for stupidnick in hatevotes[nickname]:
+                                sendchannel("/kick %s" % (stupidnick))
+                                sendchannel("GOURANGA %s" % (stupidnick))
+                            del hatevotes[nickname]
+                        else:
+                            sendchannel("/deop %s" % (nickname))
+                            sendchannel("/kick %s" % (nickname))
+                            sendchannel("/ban %s" % (nickname))
+                            del hatevotes[nickname]
 
             if (command == "!für"):
                 if target in lovevotes.keys(): # vote pending
