@@ -71,6 +71,10 @@ while True:
             users = line[6:]
             print "%d other users in channel %s." % (len(users), CHANNEL)
 
+        # update user count
+        if (line[1] == "PART") or (line[1] == "JOIN"):
+            s.send("NAMES %s\r\n" % (CHANNEL))
+
         # provide information about voting requirements
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (line[3][1:] == "!info"):
             sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(len(users)*VOTEQUOTA)))
