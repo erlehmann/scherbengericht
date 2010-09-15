@@ -41,6 +41,12 @@ s.send("JOIN :%s\r\n" % CHANNEL)
 
 sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and time.sleep(WAITTIME)
 
+kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
+ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
+
+op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
+deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
+
 readbuffer = ""
 
 hatevotes = {}
@@ -90,13 +96,13 @@ while True:
                     if len(hatevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
                         if (nickname == NICK):
                             for stupidnick in hatevotes[nickname]:
-                                sendchannel("/kick %s" % (stupidnick))
-                                sendchannel("GOURANGA %s" % (stupidnick))
+                                kick(stupidnick)
                             del hatevotes[nickname]
+                            sendchannel("GOURANGA!")
                         else:
-                            sendchannel("/deop %s" % (nickname))
-                            sendchannel("/kick %s" % (nickname))
-                            sendchannel("/ban %s" % (nickname))
+                            deop(nickname)
+                            kick(nickname)
+                            ban(nickname)
                             del hatevotes[nickname]
 
             if (command == "!für" or command == "!fuer" or command == u"!für".encode('latin_1')):
@@ -105,7 +111,7 @@ while True:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
                     else:
                         lovevotes[target].append(user)
-                        s.send("PRIVMSG %s :Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA) - len(lovevotes[target])))
+                        sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA) - len(lovevotes[target])))
 
                 else:
                     sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA) - 1))
@@ -113,5 +119,5 @@ while True:
 
                 for nickname in lovevotes.keys():
                     if len(lovevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
-                        sendchannel("/op %s" % (nickname))
+                        op(nickname)
                         del lovevotes[nickname]
