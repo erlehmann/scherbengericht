@@ -66,10 +66,10 @@ while True:
 
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (len(line) >= 5):
             user = line[0]
-            command = line[3]
+            command = line[3][1:]
             target = line[4]
 
-            if (command == ":!gegen"):
+            if (command == "!gegen"):
                 try:
                     if user in hatevotes[target]:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
@@ -88,7 +88,7 @@ while True:
                         sendchannel("/ban %s" % (nickname))
                         del hatevotes[nickname]
 
-            if (command == ":!für"):
+            if (command == "!für"):
                 try:
                     if user in lovevotes[target]:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
