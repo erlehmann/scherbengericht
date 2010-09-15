@@ -29,7 +29,7 @@ NICK        = "scherbengericht"
 IDENT       = "scherbengericht"
 REALNAME    = "ὀστρακισμός"
 CHANNEL     = "#twitter.de"
-VOTEQUOTA   = 0.01
+VOTEQUOTA   = 0.3
 WAITTIME    = 2 # seconds to time.sleep() after each message so flood detection is not triggered
 
 s = socket.socket()
