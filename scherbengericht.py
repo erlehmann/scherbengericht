@@ -70,16 +70,15 @@ while True:
             target = line[4]
 
             if (command == "!gegen"):
-                try:
+                if target in hatevote.keys(): # vote pending
                     if user in hatevotes[target]:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
-                except KeyError:
-                    if not (target in hatevotes.keys()):
-                        sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA)))
-                        hatevotes[target] = [user]
                     else:
                         sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA)))
                         hatevotes[target].append(user)
+                else: # no vote
+                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA)))
+                    hatevotes[target] = [user]
 
                 for nickname in hatevotes.keys():
                     if len(hatevotes[nickname]) >= (len(users)*VOTEQUOTA):
