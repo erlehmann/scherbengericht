@@ -88,16 +88,15 @@ while True:
                         del hatevotes[nickname]
 
             if (command == "!für"):
-                try:
+                if target in lovevotes.keys(): # vote pending
                     if user in lovevotes[target]:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
-                except KeyError:
-                    if not (target in lovevotes.keys()):
-                        sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA)))
-                        lovevotes[target] = [user]
                     else:
                         s.send("PRIVMSG %s :Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA)))
                         lovevotes[target].append(user)
+                else:
+                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA)))
+                    lovevotes[target] = [user]
 
                 for nickname in lovevotes.keys():
                     if len(lovevotes[nickname]) >= (len(users)*VOTEQUOTA):
