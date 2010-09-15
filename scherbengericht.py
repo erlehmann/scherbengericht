@@ -90,7 +90,11 @@ while True:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
                     else:
                         hatevotes[target].append(user)
-                        sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA) - len(hatevotes[target])))
+                        difference = int(len(users)*VOTEQUOTA) - len(hatevotes[target])
+                        if (difference > 0):
+                            sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, difference))
+                        else:
+                            sendchannel("Stimme gegen %s gezählt. Zuständige Stellen sind verständigt." % (target))
 
                 else: # no vote
                     sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA) - 1))
@@ -115,7 +119,11 @@ while True:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
                     else:
                         lovevotes[target].append(user)
-                        sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, int(len(users)*VOTEQUOTA) - len(lovevotes[target])))
+                        difference = int(len(users)*VOTEQUOTA) - len(lovevotes[target])
+                        if (difference > 0):
+                            sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, difference))
+                        else:
+                            sendchannel("Stimme für %s gezählt. Zuständige Stellen sind verständigt." % (target))
 
                 else:
                     sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA) - 1))
