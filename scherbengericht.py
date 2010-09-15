@@ -70,7 +70,7 @@ while True:
             target = line[4]
 
             if (command == "!gegen"):
-                if target in hatevote.keys(): # vote pending
+                if target in hatevotes.keys(): # vote pending
                     if user in hatevotes[target]:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
                     else:
