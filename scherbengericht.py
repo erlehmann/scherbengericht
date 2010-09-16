@@ -86,7 +86,7 @@ while True:
 
         # provide information about voting requirements
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (line[3][1:] == "!info"):
-            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(len(users)*VOTEQUOTA)))
+            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(round(len(users)*VOTEQUOTA))))
 
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (len(line) >= 5):
             user = line[0][1:]
@@ -100,18 +100,18 @@ while True:
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
                     else:
                         hatevotes[target].append((user,time()))
-                        difference = int(len(users)*VOTEQUOTA) - len(hatevotes[target])
+                        difference = int(round(len(users)*VOTEQUOTA)) - len(hatevotes[target])
                         if (difference > 0):
                             sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, difference))
                         else:
                             sendchannel("Stimme gegen %s gezählt. Zuständige Stellen sind verständigt." % (target))
 
                 else: # no vote
-                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(len(users)*VOTEQUOTA) - 1))
+                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(round(len(users)*VOTEQUOTA)) - 1))
                     hatevotes[target] = [(user,time())]
 
                 for nickname in hatevotes.keys():
-                    if len(hatevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
+                    if len(hatevotes[nickname]) >= (int(round(len(users)*VOTEQUOTA))):
                         if (nickname == NICK):
                             for stupidnick,t in hatevotes[nickname]:
                                 kick(stupidnick)
@@ -130,17 +130,17 @@ while True:
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
                     else:
                         lovevotes[target].append((user,time()))
-                        difference = int(len(users)*VOTEQUOTA) - len(lovevotes[target])
+                        difference = int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])
                         if (difference > 0):
-                            sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP.\r\n" % (target, difference))
+                            sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP." % (target, difference))
                         else:
                             sendchannel("Stimme für %s gezählt. Zuständige Stellen sind verständigt." % (target))
 
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(len(users)*VOTEQUOTA) - 1))
+                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(round(len(users)*VOTEQUOTA)) - 1))
                     lovevotes[target] = [(user,time())]
 
                 for nickname in lovevotes.keys():
-                    if len(lovevotes[nickname]) >= (int(len(users)*VOTEQUOTA)):
+                    if len(lovevotes[nickname]) >= int(round(len(users)*VOTEQUOTA)):
                         op(nickname)
                         del lovevotes[nickname]
