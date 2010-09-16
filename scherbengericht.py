@@ -148,11 +148,13 @@ while True:
     while ( len(lovetimes) > 0 ) and ( lovetimes[0][2] + TIMEOUT < time() ):
         target,user,t = lovetimes[0]
         lovevotes[target] = filter(lambda u: u != user, lovevotes[target])
+        sendchannel("Stimme von %s für %s ist abgelaufen. Noch %d Stimmen nötig für OP." % (user.partition("!")[0],target,int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
         if lovevotes[target] == []: del lovevotes[target]
         lovetimes = lovetimes[1:]
 
     while ( len(hatetimes) > 0 ) and ( hatetimes[0][2] + TIMEOUT < time() ):
         target,user,t = hatetimes[0]
         hatevotes[target] = filter(lambda u: u != user, hatevotes[target])
+        sendchannel("Stimme von %s gegen %s ist abgelaufen. Noch %d Stimmmen nötig für Bann." % (user.partition("!")[0],target,int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
         if hatevotes[target] == []: del hatevotes[target]
         hatetimes = hatetimes[1:]
