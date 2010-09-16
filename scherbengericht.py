@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 # Python IRC bot
-# based on <http://web.archive.org/web/20070226174611/http://gfxfor.us/general/tutorial-how-to-make-a-simple-irc-bot-from-scratch-in-python>
+# based on <http://web.archive.org/web/20070226174611/http://gfxfor.us/general/
+# tutorial-how-to-make-a-simple-irc-bot-from-scratch-in-python>
 
 # DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
 #                    Version 2, December 2004
@@ -21,17 +22,17 @@
 import sys
 import socket
 import string
-from time import time,sleep
+from time import time, sleep
 
-HOST        = "irc.freenode.net"
-PORT        = 6667
-NICK        = "scherbengericht"
-IDENT       = "scherbengericht"
-REALNAME    = "ὀστρακισμός"
-CHANNEL     = "#twitter.de"
-VOTEQUOTA   = 0.3
-WAITTIME    = 2 # seconds to time.sleep() after each message so flood detection is not triggered
-TIMEOUT     = 30 # seconds a vote is valid
+HOST = "irc.freenode.net"
+PORT = 6667
+NICK = "scherbengericht"
+IDENT = "scherbengericht"
+REALNAME = "ὀστρακισμός"
+CHANNEL = "#twitter.de"
+VOTEQUOTA = 0.3
+WAITTIME = 2  # sec to time.sleep() after each message to avoid flood detection
+TIMEOUT = 30  # sec a vote is valid
 
 s = socket.socket()
 
@@ -40,7 +41,10 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
-sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and sleep(WAITTIME)
+
+def sendchannel(message):
+    s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n")
+    sleep(WAITTIME)
 
 kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
 ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
@@ -48,11 +52,12 @@ ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
 op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
 deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
 
+
 def checkTimeOut(votes):
     if votes[0][1] + TIMEOUT > time():
         return votes                    # no votes have timed out
     elif len(votes) > 1:
-        return checkTimeOut(votes[1:])  # oldest vote has timed out, continue checking
+        return checkTimeOut(votes[1:])  # oldest vote has timed out, continue
     else:
         return []                       # no valid vote left
 
@@ -85,35 +90,46 @@ while True:
             s.send("NAMES %s\r\n" % (CHANNEL))
 
         # provide information about voting requirements
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (line[3][1:] == "!info"):
-            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(round(len(users)*VOTEQUOTA))))
+        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
+        (line[3][1:] == "!info"):
+            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum \
+König, wer von %d oder mehr der Anwesenden gewählt wird." % \
+            (int(round(len(users) * VOTEQUOTA))))
 
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (len(line) >= 5):
+        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
+        (len(line) >= 5):
             user = line[0][1:]
             command = line[3][1:]
             target = line[4]
 
             if (command == "!gegen"):
-                if target in hatevotes.keys(): # vote pending
+                if target in hatevotes.keys():  # vote pending
                     hatevotes[target] = checkTimeOut(hatevotes[target])
-                    if user in (u for u,t in hatevotes[target]):
-                        sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
+                    if user in (u for u, t in hatevotes[target]):
+                        sendchannel("Du hast bereits gegen %s abgestimmt." % \
+                        (target))
                     else:
-                        hatevotes[target].append((user,time()))
-                        difference = int(round(len(users)*VOTEQUOTA)) - len(hatevotes[target])
+                        hatevotes[target].append((user, time()))
+                        difference = int(round(len(users) * VOTEQUOTA)) - \
+                        len(hatevotes[target])
                         if (difference > 0):
-                            sendchannel("Stimme gegen %s gezählt. Noch %d Stimmmen nötig für Bann." % (target, difference))
+                            sendchannel("Stimme gegen %s gezählt. Noch %d \
+Stimmmen nötig für Bann." % (target, difference))
                         else:
-                            sendchannel("Stimme gegen %s gezählt. Zuständige Stellen sind verständigt." % (target))
+                            sendchannel("Stimme gegen %s gezählt. \
+Zuständige Stellen sind verständigt." % (target))
 
-                else: # no vote
-                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d Stimmmen nötig für Bann." % (target, int(round(len(users)*VOTEQUOTA)) - 1))
-                    hatevotes[target] = [(user,time())]
+                else:  # no vote
+                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d \
+Stimmen nötig für Bann." % \
+                    (target, int(round(len(users) * VOTEQUOTA)) - 1))
+                    hatevotes[target] = [(user, time())]
 
                 for nickname in hatevotes.keys():
-                    if len(hatevotes[nickname]) >= (int(round(len(users)*VOTEQUOTA))):
+                    if len(hatevotes[nickname]) >= \
+                    (int(round(len(users) * VOTEQUOTA))):
                         if (nickname == NICK):
-                            for stupidnick,t in hatevotes[nickname]:
+                            for stupidnick, t in hatevotes[nickname]:
                                 kick(stupidnick)
                             del hatevotes[nickname]
                             sendchannel("GOURANGA!")
@@ -123,24 +139,32 @@ while True:
                             ban(nickname)
                             del hatevotes[nickname]
 
-            if (command == "!für" or command == "!fuer" or command == u"!für".encode('latin_1')):
-                if target in lovevotes.keys(): # vote pending
+            if (command == "!für" or command == "!fuer" or \
+            command == u"!für".encode('latin_1')):
+                if target in lovevotes.keys():  # vote pending
                     lovevotes[target] = checkTimeOut(lovevotes[target])
-                    if user in (u for u,t in lovevotes[target]):
-                        sendchannel("Du hast bereits für %s abgestimmt." % (target))
+                    if user in (u for u, t in lovevotes[target]):
+                        sendchannel("Du hast bereits für %s abgestimmt." % \
+                        (target))
                     else:
-                        lovevotes[target].append((user,time()))
-                        difference = int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])
+                        lovevotes[target].append((user, time()))
+                        difference = int(round(len(users) * VOTEQUOTA)) - \
+                        len(lovevotes[target])
                         if (difference > 0):
-                            sendchannel("Stimme für %s gezählt. Noch %d Stimmen nötig für OP." % (target, difference))
+                            sendchannel("Stimme für %s gezählt. Noch %d \
+Stimmen nötig für OP." % (target, difference))
                         else:
-                            sendchannel("Stimme für %s gezählt. Zuständige Stellen sind verständigt." % (target))
+                            sendchannel("Stimme für %s gezählt. \
+Zuständige Stellen sind verständigt." % (target))
 
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmmen nötig für OP." % (target, int(round(len(users)*VOTEQUOTA)) - 1))
-                    lovevotes[target] = [(user,time())]
+                    sendchannel("Abstimmung für %s anberaumt. Noch %d \
+Stimmen nötig für OP." % \
+                    (target, int(round(len(users) * VOTEQUOTA)) - 1))
+                    lovevotes[target] = [(user, time())]
 
                 for nickname in lovevotes.keys():
-                    if len(lovevotes[nickname]) >= int(round(len(users)*VOTEQUOTA)):
+                    if len(lovevotes[nickname]) >= \
+                    int(round(len(users) * VOTEQUOTA)):
                         op(nickname)
                         del lovevotes[nickname]
