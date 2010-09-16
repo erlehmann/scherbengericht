@@ -31,6 +31,7 @@ REALNAME    = "ὀστρακισμός"
 CHANNEL     = "#twitter.de"
 VOTEQUOTA   = 0.3
 WAITTIME    = 2 # seconds to time.sleep() after each message so flood detection is not triggered
+TIMEOUT     = 30 # seconds a vote is valid
 
 s = socket.socket()
 
@@ -46,6 +47,14 @@ ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
 
 op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
 deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
+
+def checkTimeOut(votes):
+    if votes[0][1] + TIMEOUT > time():
+        return votes                    # no votes have timed out
+    elif len(votes) > 1:
+        return checkTimeOut(votes[1:])  # oldest vote has timed out, continue checking
+    else:
+        return []                       # no valid vote left
 
 readbuffer = ""
 
@@ -86,6 +95,7 @@ while True:
 
             if (command == "!gegen"):
                 if target in hatevotes.keys(): # vote pending
+                    hatevotes[target] = checkTimeOut(hatevotes[target])
                     if user in (u for u,t in hatevotes[target]):
                         sendchannel("Du hast bereits gegen %s abgestimmt." % (target))
                     else:
@@ -115,6 +125,7 @@ while True:
 
             if (command == "!für" or command == "!fuer" or command == u"!für".encode('latin_1')):
                 if target in lovevotes.keys(): # vote pending
+                    lovevotes[target] = checkTimeOut(lovevotes[target])
                     if user in (u for u,t in lovevotes[target]):
                         sendchannel("Du hast bereits für %s abgestimmt." % (target))
                     else:
