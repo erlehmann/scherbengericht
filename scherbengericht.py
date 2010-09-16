@@ -80,7 +80,7 @@ while True:
             sendchannel("Das Scherbengericht verbannt bzw. ernennt zum König, wer von %d oder mehr der Anwesenden gewählt wird." % (int(len(users)*VOTEQUOTA)))
 
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and (len(line) >= 5):
-            user = line[0]
+            user = line[0][1:]
             command = line[3][1:]
             target = line[4]
 
