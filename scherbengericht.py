@@ -21,7 +21,7 @@
 import sys
 import socket
 import string
-import time
+from time import time,sleep
 
 HOST        = "irc.freenode.net"
 PORT        = 6667
@@ -39,7 +39,7 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
-sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and time.sleep(WAITTIME)
+sendchannel = lambda message: s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n") and sleep(WAITTIME)
 
 kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
 ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
