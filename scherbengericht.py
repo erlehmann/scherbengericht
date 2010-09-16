@@ -31,6 +31,7 @@ REALNAME    = "ὀστρακισμός"
 CHANNEL     = "#twitter.de"
 VOTEQUOTA   = 0.3
 WAITTIME    = 2 # seconds to time.sleep() after each message so flood detection is not triggered
+TIMEOUT     = 30 # seconds a vote is valid
 
 s = socket.socket()
 
@@ -142,3 +143,16 @@ while True:
                         op(nickname)
                         del lovevotes[nickname]
                         lovetimes = filter(lambda t: t[0] != nickname, lovetimes)
+
+    # check timeouts
+    while ( len(lovetimes) > 0 ) and ( lovetimes[0][2] + TIMEOUT < time() ):
+        target,user,t = lovetimes[0]
+        lovevotes[target] = filter(lambda u: u != user, lovevotes[target])
+        if lovevotes[target] == []: del lovevotes[target]
+        lovetimes = lovetimes[1:]
+
+    while ( len(hatetimes) > 0 ) and ( hatetimes[0][2] + TIMEOUT < time() ):
+        target,user,t = hatetimes[0]
+        hatevotes[target] = filter(lambda u: u != user, hatevotes[target])
+        if hatevotes[target] == []: del hatevotes[target]
+        hatetimes = hatetimes[1:]
