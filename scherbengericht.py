@@ -52,6 +52,8 @@ ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
 op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
 deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
 
+identity = lambda hostmask: hostmask.split("!")[1]
+
 readbuffer = ""
 
 hatevotes = {}
@@ -85,13 +87,18 @@ while True:
         # provide information about voting requirements
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
                 (line[3][1:] == "!info"):
-            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum \
-König, wer von %d oder mehr der Anwesenden gewählt wird." % \
-                    (int(round(len(users) * VOTEQUOTA))))
+            sendchannel("Das %s verbannt bzw. ernennt zum \
+König, wer innerhalb von %d Sekunden von %d oder mehr der Anwesenden \
+gewählt wird." % (
+                    NICK,
+                    TIMEOUT,
+                    int(round(len(users) * VOTEQUOTA))
+                )
+            )
 
         if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
                 (len(line) >= 5):
-            user = line[0][1:]
+            user = identity(line[0][1:])
             command = line[3][1:]
             target = line[4]
 
@@ -156,8 +163,10 @@ Stimmen nötig für OP." % (target, difference))
 Zuständige Stellen sind verständigt." % (target))
 
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d \
-Stimmen nötig für OP." % \
+                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmen nötig für OP." % (
+                        target,
+                        int(round(len(users[channel]) * VOTEQUOTA)) - 1)
+                    )
                     lovevotes[target] = [user]
                     lovetimes.append((target,user,time()))
 
