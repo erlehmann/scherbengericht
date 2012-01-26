@@ -29,35 +29,44 @@ PORT = 6667
 NICK = "scherbengericht"
 IDENT = "scherbengericht"
 REALNAME = "ὀστρακισμός"
-CHANNEL = "#twitter.de"
+CHANNELS = ["#twitter.de", "#nodrama.de"]
 VOTEQUOTA = 0.3
 WAITTIME = 2  # sec to time.sleep() after each message to avoid flood detection
-TIMEOUT = 30  # sec a vote is valid
+TIMEOUT = 180  # sec a vote is valid
 
 s = socket.socket()
 
 s.connect((HOST, PORT))
 s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
-s.send("JOIN :%s\r\n" % CHANNEL)
+for channel in CHANNELS:
+    s.send("JOIN :%s\r\n" % channel)
 
 
-def sendchannel(message):
-    s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n")
+def sendchannel(channel, message):
+    s.send("PRIVMSG " + channel + " :" + message + "\r\n")
     sleep(WAITTIME)
 
-kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
-ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
+kick = lambda channel, user: s.send("KICK " + channel + " " + user + "\r\n")
+ban = lambda channel, user: s.send("MODE " + channel + " +b " + user + "!*@*\r\n")
+unban = lambda channel, user: s.send("MODE " + channel + " -b " + user + "!*@*\r\n")
 
-op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
-deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
+op = lambda channel, user: s.send("MODE " + channel + " +o " + user + "\r\n")
+deop = lambda channel, user: s.send("MODE " + channel + " -o " + user + "\r\n")
 
 readbuffer = ""
 
 hatevotes = {}
-hatetimes = []
+hatetimes = {}
 lovevotes = {}
-lovetimes = []
+lovetimes = {}
+users = {}
+for channel in CHANNELS:
+    hatevotes[channel] = {}
+    hatetimes[channel] = []
+    lovevotes[channel] = {}
+    lovetimes[channel] = []
+    users[channel] = []
 
 while True:
     readbuffer = readbuffer + s.recv(1024)
@@ -75,117 +84,124 @@ while True:
 
         # count users
         if (line[1] == "353"):
-            users = line[6:]
-            print "%d other users in channel %s." % (len(users), CHANNEL)
+            users[line[4]] = line[6:]
+            print "%d other users in channel %s." % (len(users[channel]), channel)
 
         # update user count
         if (line[1] == "PART") or (line[1] == "JOIN"):
-            s.send("NAMES %s\r\n" % (CHANNEL))
+            s.send("NAMES %s\r\n" % (line[2]))
 
         # provide information about voting requirements
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
+        if (line[1] == "PRIVMSG") and (line[2] in CHANNELS) and \
                 (line[3][1:] == "!info"):
-            sendchannel("Das Scherbengericht verbannt bzw. ernennt zum \
-König, wer von %d oder mehr der Anwesenden gewählt wird." % \
-                    (int(round(len(users) * VOTEQUOTA))))
+            sendchannel(line[2], "Das Scherbengericht verbannt bzw. ernennt zum \
+König, wer innerhalb von %d Sekunden von %d oder mehr der Anwesenden \
+gewählt wird." % (TIMEOUT, int(round(len(users[line[2]]) * VOTEQUOTA))))
 
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
+        if (line[1] == "PRIVMSG") and (line[2] in CHANNELS) and \
                 (len(line) >= 5):
+            channel = line[2]
             user = line[0][1:]
             command = line[3][1:]
             target = line[4]
 
             if (command == "!gegen"):
-                if target in hatevotes.keys(): # vote pending
-                    if user in hatevotes[target]:
-                        sendchannel("Du hast bereits gegen %s abgestimmt." % \
+                if target in hatevotes[channel].keys(): # vote pending
+                    if user in hatevotes[channel][target]:
+                        sendchannel(channel, "Du hast bereits gegen %s abgestimmt." % \
                                 (target))
                     else:
-                        hatevotes[target].append(user)
-                        hatetimes.append((target, user, time()))
-                        difference = int(round(len(users) * VOTEQUOTA)) - \
-                                len(hatevotes[target])
+                        hatevotes[channel][target].append(user)
+                        hatetimes[channel].append((target, user, time()))
+                        difference = int(round(len(users[channel]) * VOTEQUOTA)) - \
+                                len(hatevotes[channel][target])
                         if (difference > 0):
-                            sendchannel("Stimme gegen %s gezählt. Noch %d \
+                            sendchannel(channel, "Stimme gegen %s gezählt. Noch %d \
 Stimmmen nötig für Bann." % (target, difference))
                         else:
-                            sendchannel("Stimme gegen %s gezählt. \
+                            sendchannel(channel, "Stimme gegen %s gezählt. \
 Zuständige Stellen sind verständigt." % (target))
 
                 else: # no vote
-                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d \
+                    sendchannel(channel, "Abstimmung gegen %s anberaumt. Noch %d \
 Stimmen nötig für Bann." % \
-                            (target, int(round(len(users) * VOTEQUOTA)) - 1))
-                    hatevotes[target] = [user]
-                    hatetimes.append((target, user, time()))
+                            (target, int(round(len(users[channel]) * VOTEQUOTA)) - 1))
+                    hatevotes[channel][target] = [user]
+                    hatetimes[channel].append((target, user, time()))
 
-                for nickname in hatevotes.keys():
-                    if len(hatevotes[nickname]) >= \
-                            (int(round(len(users) * VOTEQUOTA))):
+                for nickname in hatevotes[channel].keys():
+                    if len(hatevotes[channel][nickname]) >= \
+                            (int(round(len(users[channel]) * VOTEQUOTA))):
                         if (nickname == NICK):
-                            for stupidnick, t in hatevotes[nickname]:
-                                kick(stupidnick)
-                            del hatevotes[nickname]
-                            hatetimes = filter(lambda t: t[0] != nickname, \
-                                    hatetimes)
-                            sendchannel("GOURANGA!")
+                            for stupidnick in hatevotes[channel][nickname]:
+                                kick(channel,stupidnick)
+                            del hatevotes[channel][nickname]
+                            hatetimes[channel] = filter(lambda t: t[0] != nickname, \
+                                    hatetimes[channel])
+                            sendchannel(channel,"GOURANGA!")
                         else:
-                            deop(nickname)
-                            kick(nickname)
-                            ban(nickname)
-                            del hatevotes[nickname]
-                            hatetimes = filter(lambda t: t[0] != nickname, \
-                                    hatetimes)
+                            deop(channel,nickname)
+                            kick(channel,nickname)
+                            ban(channel,nickname)
+                            del hatevotes[channel][nickname]
+                            hatetimes[channel] = filter(lambda t: t[0] != nickname, \
+                                    hatetimes[channel])
 
             if (command == "!für" or command == "!fuer" or \
                     command == u"!für".encode('latin_1')):
-                if target in lovevotes.keys(): # vote pending
-                    if user in lovevotes[target]:
-                        sendchannel("Du hast bereits für %s abgestimmt." % \
+                if target in lovevotes[channel].keys(): # vote pending
+                    if user in lovevotes[channel][target]:
+                        sendchannel(channel,"Du hast bereits für %s abgestimmt." % \
                                 (target))
                     else:
-                        lovevotes[target].append(user)
-                        lovetimes.append((target, user, time()))
-                        difference = int(round(len(users) * VOTEQUOTA)) - \
-                                len(lovevotes[target])
+                        lovevotes[channel][target].append(user)
+                        lovetimes[channel].append((target, user, time()))
+                        difference = int(round(len(users[channel]) * VOTEQUOTA)) - \
+                                len(lovevotes[channel][target])
                         if (difference > 0):
-                            sendchannel("Stimme für %s gezählt. Noch %d \
-Stimmen nötig für OP." % (target, difference))
+                            sendchannel(channel,"Stimme für %s gezählt. Noch %d \
+Stimmen nötig für OP/Unban." % (target, difference))
                         else:
-                            sendchannel("Stimme für %s gezählt. \
+                            sendchannel(channel,"Stimme für %s gezählt. \
 Zuständige Stellen sind verständigt." % (target))
 
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d \
-Stimmen nötig für OP." % \
-                    lovevotes[target] = [user]
-                    lovetimes.append((target,user,time()))
+                    sendchannel(channel,"Abstimmung für %s anberaumt. Noch %d \
+Stimmen nötig für OP/Unban." % \
+                            (target, int(round(len(users[channel]) * VOTEQUOTA)) - 1))
+                    lovevotes[channel][target] = [user]
+                    lovetimes[channel].append((target, user, time()))
 
-                for nickname in lovevotes.keys():
-                    if len(lovevotes[nickname]) >= \
-                            int(round(len(users) * VOTEQUOTA)):
-                        op(nickname)
-                        del lovevotes[nickname]
-                        lovetimes = filter(lambda t: t[0] != nickname, \
-                                lovetimes)
+                for nickname in lovevotes[channel].keys():
+                    if len(lovevotes[channel][nickname]) >= \
+                            int(round(len(users[channel]) * VOTEQUOTA)):
+                        op(channel,nickname)
+                        unban(channel,nickname)
+                        del lovevotes[channel][nickname]
+                        lovetimes[channel] = filter(lambda t: t[0] != nickname, \
+                                lovetimes[channel])
+            channel = None
 
     # check timeouts
-    while ( len(lovetimes) > 0 ) and \
-            ( lovetimes[0][2] + TIMEOUT < time() ):
-        target, user, t = lovetimes[0]
-        lovevotes[target] = filter(lambda u: u != user, lovevotes[target])
-        sendchannel("Stimme von %s für %s ist abgelaufen. Noch %d \
+    for channel in CHANNELS:
+        while (len(lovetimes[channel]) > 0) and \
+                (lovetimes[channel][0][2] + TIMEOUT < time()):
+            target, user, t = lovetimes[channel][0]
+            lovevotes[channel][target] = filter(lambda u: u != user, lovevotes[channel][target])
+            sendchannel(channel,"Stimme von %s für %s ist abgelaufen. Noch %d \
 Stimmen nötig für OP." % (user.partition("!")[0], target, \
-                int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
-        if lovevotes[target] == []: del lovevotes[target]
-        lovetimes = lovetimes[1:]
+                    int(round(len(users[channel]) * VOTEQUOTA)) - len(lovevotes[channel][target])))
+            if lovevotes[channel][target] == []:
+                del lovevotes[channel][target]
+            lovetimes[channel] = lovetimes[channel][1:]
 
-    while ( len(hatetimes) > 0 ) and \
-            ( hatetimes[0][2] + TIMEOUT < time() ):
-        target, user, t = hatetimes[0]
-        hatevotes[target] = filter(lambda u: u != user, hatevotes[target])
-        sendchannel("Stimme von %s gegen %s ist abgelaufen. Noch %d \
+        while (len(hatetimes[channel]) > 0) and \
+                (hatetimes[channel][0][2] + TIMEOUT < time()):
+            target, user, t = hatetimes[channel][0]
+            hatevotes[channel][target] = filter(lambda u: u != user, hatevotes[channel][target])
+            sendchannel(channel,"Stimme von %s gegen %s ist abgelaufen. Noch %d \
 Stimmmen nötig für Bann." % (user.partition("!")[0], target, \
-                int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
-        if hatevotes[target] == []: del hatevotes[target]
-        hatetimes = hatetimes[1:]
+                    int(round(len(users[channel]) * VOTEQUOTA)) - len(hatevotes[channel][target])))
+            if hatevotes[channel][target] == []:
+                del hatevotes[channel][target]
+            hatetimes[channel] = hatetimes[channel][1:]
