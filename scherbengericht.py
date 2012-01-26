@@ -54,6 +54,8 @@ unban = lambda channel, user: s.send("MODE " + channel + " -b " + user + "!*@*\r
 op = lambda channel, user: s.send("MODE " + channel + " +o " + user + "\r\n")
 deop = lambda channel, user: s.send("MODE " + channel + " -o " + user + "\r\n")
 
+identity = lambda hostmask: hostmask.split("!")[1]
+
 readbuffer = ""
 
 hatevotes = {}
@@ -101,7 +103,7 @@ gewählt wird." % (TIMEOUT, int(round(len(users[line[2]]) * VOTEQUOTA))))
         if (line[1] == "PRIVMSG") and (line[2] in CHANNELS) and \
                 (len(line) >= 5):
             channel = line[2]
-            user = line[0][1:]
+            user = identity(line[0][1:])
             command = line[3][1:]
             target = line[4]
 
