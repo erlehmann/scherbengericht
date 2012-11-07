@@ -25,7 +25,7 @@ from time import time, sleep
 HOST = "irc.freenode.net"
 PORT = 6667
 NICK = "nudelgericht"
-IDENT = "nudelgericht"
+IDENT = "nudel"
 REALNAME = "Lasagna Ludolf"
 CHANNEL = "#nodrama.de"
 VOTING_QUOTA = 0.3  # proportion of voters that are needed for a vote to be successful
