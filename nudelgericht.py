@@ -177,7 +177,7 @@ while True:
                     users.append(user[1:])
             print users
 
-        elif messagetype in ("PART", "JOIN"):
+        elif messagetype == ('JOIN', 'PART', 'NICK'):
             s.send("NAMES %s\r\n" % (CHANNEL))
 
         elif messagetype == "PRIVMSG":
