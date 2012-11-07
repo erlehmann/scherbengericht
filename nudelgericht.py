@@ -128,7 +128,9 @@ def execute_the_will_of_the_people():
                 emit('Abstimmung %s %s erfolgreich.' % (votetype, target))
                 if votetype == 'für':
                     unban(target)
+                    op(target)
                 elif votetype == 'gegen':
+                    deop(target)
                     ban(target)
                     kick(target)
                 forget_votes(target, votetype)
@@ -137,6 +139,8 @@ def execute_the_will_of_the_people():
 kick = lambda user: s.send('KICK ' + CHANNEL + ' ' + user + '\r\n')
 ban = lambda user: s.send('MODE ' + CHANNEL + ' +b ' + user + '!*@*\r\n')
 unban = lambda user: s.send('MODE ' + CHANNEL + ' -b ' + user + '!*@*\r\n')
+op = lambda user: s.send('MODE ' + CHANNEL + ' +o ' + user + '\r\n')
+deop = lambda user: s.send('MODE ' + CHANNEL + ' -o ' + user + '\r\n')
 
 def get_name_parts(name):
     parts = name.split('!')
