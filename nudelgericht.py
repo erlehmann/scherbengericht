@@ -148,6 +148,8 @@ def get_name_parts(name):
 
 readbuffer = ''
 
+users = []
+
 while True:
     readbuffer = readbuffer + s.recv(1024)
     temp = string.split(readbuffer, '\n')
@@ -166,6 +168,14 @@ while True:
         if (line[0] == "PING"):
             s.send("PONG %s\r\n" % messagetype)
             continue
+
+        elif messagetype == '353':
+            users = ' '.join(line[5:])[1:].split(' ')
+            for user in users:
+                if user.startswith('@'):
+                    del users[users.index(user)]
+                    users.append(user[1:])
+            print users
 
         elif messagetype in ("PART", "JOIN"):
             s.send("NAMES %s\r\n" % (CHANNEL))
@@ -199,6 +209,8 @@ while True:
                 if argument == NICK:
                     emit('An dieser Stelle habe ich einen überflüssigen Smiley hingemacht, wofür ich mich dereinst schämen werde.')
                     kick(nickname)
+                elif argument not in users:
+                    emit("%s ist nicht in %s." % (argument, CHANNEL))
                 elif old_enough_to_vote(hostmask):
                     remember_vote(argument, command[1:], hostmask)
                 else:
