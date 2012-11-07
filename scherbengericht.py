@@ -5,36 +5,32 @@
 # based on <http://web.archive.org/web/20070226174611/http://gfxfor.us/general/
 # tutorial-how-to-make-a-simple-irc-bot-from-scratch-in-python>
 
-# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-#                    Version 2, December 2004
-#
-# Copyright (C) 2004 Sam Hocevar
-#  14 rue de Plaisance, 75014 Paris, France
-# Everyone is permitted to copy and distribute verbatim or modified
-# copies of this license document, and changing it is allowed as long
-# as the name is changed.
-#
-#            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-#   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-#
-#  0. You just DO WHAT THE FUCK YOU WANT TO.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# Dieses Programm hat das Ziel, die Medienkompetenz der Leser zu
+# steigern. Gelegentlich packe ich sogar einen handfesten Buffer
+# Overflow oder eine Format String Vulnerability zwischen die anderen
+# Codezeilen und schreibe das auch nicht dran.
 
 import sys
 import socket
 import string
+
+from math import ceil
 from time import time, sleep
 
 HOST = "irc.freenode.net"
 PORT = 6667
 NICK = "nudelgericht"
 IDENT = "nudelgericht"
-REALNAME = "ὀστρακισμός"
+REALNAME = "Lasagna Ludolf"
 CHANNEL = "#nodrama.de"
-VOTEQUOTA = 0.3
-WAITTIME = 2  # seconds to wait after each message to avoid flood detection
+VOTING_QUOTA = 0.3  # proportion of voters that are needed for a vote to be successful
 VOTING_TIMEOUT = 60*3  # seconds a vote is valid
-VOTING_MINAGE = 60*3
-VOTING_MAXAGE = 60*60*24
+VOTING_AGE_MIN = 60*3  # seconds from a user saying something to gaining voting rights
 
 s = socket.socket()
 
@@ -43,84 +39,107 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
-
 def emit(message):
     s.send("NOTICE " + CHANNEL + " :" + message + "\r\n")
-    sleep(WAITTIME)
+    sleep(1) # do not flood
 
-constituents_firstmessage = {}
-constituents_lastmessage = {}
+people = {}
 
-def add_constituent(hostmask):
-    global constituents_firstmessage
-    global constituents_lastmessage
-    if hostmask not in constituents_firstmessage:
-        constituents_firstmessage[hostmask] = time()
-    constituents_lastmessage[hostmask] = time()
+def remember_user(nickname, hostmask):
+    global people
+    try:
+        people[hostmask]['nickname'] = nickname
+    except KeyError:
+        people[hostmask] = {
+            'firstmessage': time(),
+            'nickname': nickname
+        }
 
-def remove_constituent(hostmask):
-    global constituents_firstmessage
-    global constituents_lastmessage
-    del constituents_firstmessage[hostmask]
-    del constituents_lastmessage[hostmask]
+def forget_user(hostmask):
+    global people
+    del people[hostmask]
 
-def clean_constituents():
-    global constituents_lastmessage
-    for hostmask in constituents_lastmessage:
-        if constituents_lastmessage[hostmask] + VOTING_MAXAGE < time():
-            remove_constituent(hostmask)
+def get_nickname(hostmask):
+    return people[hostmask]['nickname']
 
-def get_valid_constituents():
-    return [
-        hostmask for hostmask in constituents_lastmessage \
-            if is_constituent(hostmask)
-    ]
+def get_age(hostmask):
+    return time() - people[hostmask]['firstmessage']
 
-def is_constituent(hostmask):
-    if constituents_firstmessage[hostmask] + VOTING_MINAGE > constituents_lastmessage[hostmask]:
+def old_enough_to_vote(hostmask):
+    if get_age(hostmask) > VOTING_AGE_MIN:
         return True
     return False
 
+def get_adult_users():
+    adult_users = []
+    for hostmask in people:
+        if old_enough_to_vote(hostmask):
+            adult_users.append(people[hostmask]['nickname'])
+    return adult_users
+
+def get_voting_threshold():
+    threshold = ceil(len(get_adult_users()) * VOTING_QUOTA)
+    if threshold < 3:
+        return 3
+    return threshold
+
 votes = {}
 
-def add_vote(target, votetype, origin):
+def remember_vote(target, votetype, origin):
     global votes
     votetime = time()
     try:
         votes[target][votetype][origin] = votetime
+        emit('Stimme gezählt von %s %s %s.' % (get_nickname(origin), votetype, target))
     except KeyError:
         try:
             votes[target][votetype] = { origin: votetime }
+            emit('')
         except KeyError:
-            try:
-                votes[target] = { votetype: { origin: votetime } }
-            except KeyError:
-                votes = { target: { votetype: { origin: votetime } } }
+            votes[target] = { votetype: { origin: votetime } }
+        emit('Abstimmung gestartet von %s %s %s.' % (get_nickname(origin), votetype, target))
+    emit('Weitere Stimmen notwendig: %d.' % \
+        (get_voting_threshold() - count_votes(target, votetype)))
 
-def clean_votes():
+def count_votes(target, votetype):
+    return len(votes[target][votetype])
+
+def forget_votes(target, votetype):
+    del votes[target][votetype]
+
+def forget_old_votes():
     global votes
     for target in votes:
-        for votetype in target:
-            for origin in votetype:
+        for votetype in votes[target]:
+            for origin in votes[target][votetype]:
                 votetime = votes[target][votetype][origin]
-                if votetime + TIMEOUT < time():
+                if votetime + VOTING_TIMEOUT < time():
                     del votes[target][votetype][origin]
-    print  votes
+                    emit('Stimme abgelaufen von %s %s %s.' % \
+                        (get_nickname(origin), votetype, target))
+                    break
 
-def execute():
+def execute_the_will_of_the_people():
     global votes
     for target in votes:
-        for votetype in target:
-            print target, votes[target][votetype]
-            # raise NotImplementedError
+        for votetype in votes[target]:
+            if count_votes(target, votetype) >= get_voting_threshold():
+                emit('Abstimmung %s %s erfolgreich.' % (votetype, target))
+                if votetype == 'für':
+                    unban(target)
+                elif votetype == 'gegen':
+                    ban(target)
+                    kick(target)
+                forget_votes(target, votetype)
+                break
 
-kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
-ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
+kick = lambda user: s.send('KICK ' + CHANNEL + ' ' + user + '\r\n')
+ban = lambda user: s.send('MODE ' + CHANNEL + ' +b ' + user + '!*@*\r\n')
+unban = lambda user: s.send('MODE ' + CHANNEL + ' -b ' + user + '!*@*\r\n')
 
-op = lambda user: s.send("MODE " + CHANNEL + " +o " + user + "\r\n")
-deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
-
-identity = lambda hostmask: hostmask.split("!")[1]
+def get_name_parts(name):
+    parts = name.split('!')
+    return parts[0], parts[1]
 
 readbuffer = ''
 
@@ -129,9 +148,8 @@ while True:
     temp = string.split(readbuffer, '\n')
     readbuffer = temp.pop()
 
-    execute()
-    clean_constituents()
-    clean_votes()
+    execute_the_will_of_the_people()
+    forget_old_votes()
 
     for line in temp:
         line = string.rstrip(line)
@@ -148,8 +166,8 @@ while True:
             s.send("NAMES %s\r\n" % (CHANNEL))
 
         elif messagetype == "PRIVMSG":
-            hostmask = identity(line[0][1:])
-            add_constituent(hostmask)
+            nickname, hostmask = get_name_parts(line[0][1:])
+            remember_user(nickname, hostmask)
 
             channel = line[2]
             if channel != CHANNEL:
@@ -161,18 +179,23 @@ while True:
             except IndexError:
                 argument = ''
 
-            if command == '!info':
-                emit("Gültigkeit einer Stimme: %s Sekunden. Volk: %s" % \
-                    (VOTING_TIMEOUT, get_valid_constituents()))
+            if command == '!man':
+                emit("Die vollständige Dokumentation für GNU/%s ist verfügbar als Texinfo-Handbuch." % NICK)
 
-            elif command == '!gegen':
-                if is_constituent(user):
-                    add_vote(argument, 'gegen', hostmask)
-                else:
-                    emit("%s ist nicht wahlberechtigt." % hostmask)
+            elif command == '!info':
+                emit(
+                    "Man kann Stimme machen !für, man kann Stimme machen !gegen. " + \
+                    "Stimmen verfallen nach %d Sekunden. " % VOTING_TIMEOUT + \
+                    "Quorum: %d. " % get_voting_threshold() + \
+                    "Wahlberechtigt: %s. " % ', '.join(get_adult_users())
+                )
 
-            elif command == '!für':
-                if is_constituent(user):
-                    add_vote(argument, 'für', hostmask)
+            elif command in ('!für', '!gegen'):
+                if argument == NICK:
+                    emit('An dieser Stelle habe ich einen überflüssigen Smiley hingemacht, wofür ich mich dereinst schämen werde.')
+                    kick(nickname)
+                elif old_enough_to_vote(hostmask):
+                    remember_vote(argument, command[1:], hostmask)
                 else:
-                    emit("%s ist nicht wahlberechtigt." % hostmask)
+                    emit("%s ist erst %d Sekunden alt und darf nicht wählen. Wahlalter: %d Sekunden." % \
+                        (nickname, get_age(hostmask), VOTING_AGE_MIN))
