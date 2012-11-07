@@ -88,18 +88,19 @@ votes = {}
 def remember_vote(target, votetype, origin):
     global votes
     votetime = time()
+    message = ''
     try:
         votes[target][votetype][origin] = votetime
-        emit('Stimme gezählt von %s %s %s.' % (get_nickname(origin), votetype, target))
+        message += "Stimme gezählt von %s %s %s." % (get_nickname(origin), votetype, target)
     except KeyError:
         try:
             votes[target][votetype] = { origin: votetime }
             emit('')
         except KeyError:
             votes[target] = { votetype: { origin: votetime } }
-        emit('Abstimmung gestartet von %s %s %s.' % (get_nickname(origin), votetype, target))
-    emit('Weitere Stimmen notwendig: %d.' % \
-        (get_voting_threshold() - count_votes(target, votetype)))
+        message += "Abstimmung gestartet von %s %s %s." % (get_nickname(origin), votetype, target)
+    emit('%s Weitere Stimmen notwendig: %d.' % \
+        (message, get_voting_threshold() - count_votes(target, votetype)))
 
 def count_votes(target, votetype):
     return len(votes[target][votetype])
