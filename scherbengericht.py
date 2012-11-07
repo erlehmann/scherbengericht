@@ -26,13 +26,15 @@ from time import time, sleep
 
 HOST = "irc.freenode.net"
 PORT = 6667
-NICK = "scherbengericht"
-IDENT = "scherbengericht"
+NICK = "nudelgericht"
+IDENT = "nudelgericht"
 REALNAME = "ὀστρακισμός"
-CHANNEL = "#twitter.de"
+CHANNEL = "#nodrama.de"
 VOTEQUOTA = 0.3
-WAITTIME = 2  # sec to time.sleep() after each message to avoid flood detection
-TIMEOUT = 30  # sec a vote is valid
+WAITTIME = 2  # seconds to wait after each message to avoid flood detection
+VOTING_TIMEOUT = 60*3  # seconds a vote is valid
+VOTING_MINAGE = 60*3
+VOTING_MAXAGE = 60*60*24
 
 s = socket.socket()
 
@@ -42,9 +44,75 @@ s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME))
 s.send("JOIN :%s\r\n" % CHANNEL)
 
 
-def sendchannel(message):
-    s.send("PRIVMSG " + CHANNEL + " :" + message + "\r\n")
+def emit(message):
+    s.send("NOTICE " + CHANNEL + " :" + message + "\r\n")
     sleep(WAITTIME)
+
+constituents_firstmessage = {}
+constituents_lastmessage = {}
+
+def add_constituent(hostmask):
+    global constituents_firstmessage
+    global constituents_lastmessage
+    if hostmask not in constituents_firstmessage:
+        constituents_firstmessage[hostmask] = time()
+    constituents_lastmessage[hostmask] = time()
+
+def remove_constituent(hostmask):
+    global constituents_firstmessage
+    global constituents_lastmessage
+    del constituents_firstmessage[hostmask]
+    del constituents_lastmessage[hostmask]
+
+def clean_constituents():
+    global constituents_lastmessage
+    for hostmask in constituents_lastmessage:
+        if constituents_lastmessage[hostmask] + VOTING_MAXAGE < time():
+            remove_constituent(hostmask)
+
+def get_valid_constituents():
+    return [
+        hostmask for hostmask in constituents_lastmessage \
+            if is_constituent(hostmask)
+    ]
+
+def is_constituent(hostmask):
+    if constituents_firstmessage[hostmask] + VOTING_MINAGE > constituents_lastmessage[hostmask]:
+        return True
+    return False
+
+votes = {}
+
+def add_vote(target, votetype, origin):
+    global votes
+    votetime = time()
+    try:
+        votes[target][votetype][origin] = votetime
+    except KeyError:
+        try:
+            votes[target][votetype] = { origin: votetime }
+        except KeyError:
+            try:
+                votes[target] = { votetype: { origin: votetime } }
+            except KeyError:
+                votes = { target: { votetype: { origin: votetime } } }
+
+def clean_votes():
+    global votes
+    for target in votes:
+        for votetype in target:
+            for origin in votetype:
+                votetime = votes[target][votetype][origin]
+                if votetime + TIMEOUT < time():
+                    del votes[target][votetype][origin]
+    print  votes
+
+def execute():
+    global votes
+    for target in votes:
+        for votetype in target:
+            print target, votes[target][votetype]
+            # raise NotImplementedError
 
 kick = lambda user: s.send("KICK " + CHANNEL + " " + user + "\r\n")
 ban = lambda user: s.send("MODE " + CHANNEL + " +b " + user + "!*@*\r\n")
@@ -54,147 +122,57 @@ deop = lambda user: s.send("MODE " + CHANNEL + " -o " + user + "\r\n")
 
 identity = lambda hostmask: hostmask.split("!")[1]
 
-readbuffer = ""
-
-hatevotes = {}
-hatetimes = []
-lovevotes = {}
-lovetimes = []
+readbuffer = ''
 
 while True:
     readbuffer = readbuffer + s.recv(1024)
-    temp = string.split(readbuffer, "\n")
+    temp = string.split(readbuffer, '\n')
     readbuffer = temp.pop()
+
+    execute()
+    clean_constituents()
+    clean_votes()
 
     for line in temp:
         line = string.rstrip(line)
         line = string.split(line)
         print line
 
-        # keep alive
+        messagetype = line[1]
+
         if (line[0] == "PING"):
-            s.send("PONG %s\r\n" % line[1])
+            s.send("PONG %s\r\n" % messagetype)
+            continue
 
-        # count users
-        if (line[1] == "353"):
-            users = line[6:]
-            print "%d other users in channel %s." % (len(users), CHANNEL)
-
-        # update user count
-        if (line[1] == "PART") or (line[1] == "JOIN"):
+        elif messagetype in ("PART", "JOIN"):
             s.send("NAMES %s\r\n" % (CHANNEL))
 
-        # provide information about voting requirements
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
-                (line[3][1:] == "!info"):
-            sendchannel("Das %s verbannt bzw. ernennt zum \
-König, wer innerhalb von %d Sekunden von %d oder mehr der Anwesenden \
-gewählt wird." % (
-                    NICK,
-                    TIMEOUT,
-                    int(round(len(users) * VOTEQUOTA))
-                )
-            )
+        elif messagetype == "PRIVMSG":
+            hostmask = identity(line[0][1:])
+            add_constituent(hostmask)
 
-        if (line[1] == "PRIVMSG") and (line[2] == CHANNEL) and \
-                (len(line) >= 5):
-            user = identity(line[0][1:])
+            channel = line[2]
+            if channel != CHANNEL:
+                continue
+
             command = line[3][1:]
-            target = line[4]
+            try:
+                argument = line[4]
+            except IndexError:
+                argument = ''
 
-            if (command == "!gegen"):
-                if target in hatevotes.keys(): # vote pending
-                    if user in hatevotes[target]:
-                        sendchannel("Du hast bereits gegen %s abgestimmt." % \
-                                (target))
-                    else:
-                        hatevotes[target].append(user)
-                        hatetimes.append((target, user, time()))
-                        difference = int(round(len(users) * VOTEQUOTA)) - \
-                                len(hatevotes[target])
-                        if (difference > 0):
-                            sendchannel("Stimme gegen %s gezählt. Noch %d \
-Stimmmen nötig für Bann." % (target, difference))
-                        else:
-                            sendchannel("Stimme gegen %s gezählt. \
-Zuständige Stellen sind verständigt." % (target))
+            if command == '!info':
+                emit("Gültigkeit einer Stimme: %s Sekunden. Volk: %s" % \
+                    (VOTING_TIMEOUT, get_valid_constituents()))
 
-                else: # no vote
-                    sendchannel("Abstimmung gegen %s anberaumt. Noch %d \
-Stimmen nötig für Bann." % \
-                            (target, int(round(len(users) * VOTEQUOTA)) - 1))
-                    hatevotes[target] = [user]
-                    hatetimes.append((target, user, time()))
-
-                for nickname in hatevotes.keys():
-                    if len(hatevotes[nickname]) >= \
-                            (int(round(len(users) * VOTEQUOTA))):
-                        if (nickname == NICK):
-                            for stupidnick, t in hatevotes[nickname]:
-                                kick(stupidnick)
-                            del hatevotes[nickname]
-                            hatetimes = filter(lambda t: t[0] != nickname, \
-                                    hatetimes)
-                            sendchannel("GOURANGA!")
-                        else:
-                            deop(nickname)
-                            kick(nickname)
-                            ban(nickname)
-                            del hatevotes[nickname]
-                            hatetimes = filter(lambda t: t[0] != nickname, \
-                                    hatetimes)
-
-            if (command == "!für" or command == "!fuer" or \
-                    command == u"!für".encode('latin_1')):
-                if target in lovevotes.keys(): # vote pending
-                    if user in lovevotes[target]:
-                        sendchannel("Du hast bereits für %s abgestimmt." % \
-                                (target))
-                    else:
-                        lovevotes[target].append(user)
-                        lovetimes.append((target, user, time()))
-                        difference = int(round(len(users) * VOTEQUOTA)) - \
-                                len(lovevotes[target])
-                        if (difference > 0):
-                            sendchannel("Stimme für %s gezählt. Noch %d \
-Stimmen nötig für OP." % (target, difference))
-                        else:
-                            sendchannel("Stimme für %s gezählt. \
-Zuständige Stellen sind verständigt." % (target))
-
+            elif command == '!gegen':
+                if is_constituent(user):
+                    add_vote(argument, 'gegen', hostmask)
                 else:
-                    sendchannel("Abstimmung für %s anberaumt. Noch %d Stimmen nötig für OP." % (
-                        target,
-                        int(round(len(users[channel]) * VOTEQUOTA)) - 1)
-                    )
-                    lovevotes[target] = [user]
-                    lovetimes.append((target,user,time()))
+                    emit("%s ist nicht wahlberechtigt." % hostmask)
 
-                for nickname in lovevotes.keys():
-                    if len(lovevotes[nickname]) >= \
-                            int(round(len(users) * VOTEQUOTA)):
-                        op(nickname)
-                        del lovevotes[nickname]
-                        lovetimes = filter(lambda t: t[0] != nickname, \
-                                lovetimes)
-
-    # check timeouts
-    while ( len(lovetimes) > 0 ) and \
-            ( lovetimes[0][2] + TIMEOUT < time() ):
-        target, user, t = lovetimes[0]
-        lovevotes[target] = filter(lambda u: u != user, lovevotes[target])
-        sendchannel("Stimme von %s für %s ist abgelaufen. Noch %d \
-Stimmen nötig für OP." % (user.partition("!")[0], target, \
-                int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
-        if lovevotes[target] == []: del lovevotes[target]
-        lovetimes = lovetimes[1:]
-
-    while ( len(hatetimes) > 0 ) and \
-            ( hatetimes[0][2] + TIMEOUT < time() ):
-        target, user, t = hatetimes[0]
-        hatevotes[target] = filter(lambda u: u != user, hatevotes[target])
-        sendchannel("Stimme von %s gegen %s ist abgelaufen. Noch %d \
-Stimmmen nötig für Bann." % (user.partition("!")[0], target, \
-                int(round(len(users)*VOTEQUOTA)) - len(lovevotes[target])) )
-        if hatevotes[target] == []: del hatevotes[target]
-        hatetimes = hatetimes[1:]
+            elif command == '!für':
+                if is_constituent(user):
+                    add_vote(argument, 'für', hostmask)
+                else:
+                    emit("%s ist nicht wahlberechtigt." % hostmask)
