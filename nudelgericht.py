@@ -45,6 +45,8 @@ def emit(message):
 
 people = {}
 
+users = []
+
 def remember_user(nickname, hostmask):
     global people
     try:
@@ -58,6 +60,12 @@ def remember_user(nickname, hostmask):
 def forget_user(hostmask):
     global people
     del people[hostmask]
+
+def forget_old_users():
+    for hostmask in people:
+        if people[hostmask]['nickname'] not in users:
+            forget_user(hostmask)
+            break
 
 def get_nickname(hostmask):
     return people[hostmask]['nickname']
@@ -148,14 +156,13 @@ def get_name_parts(name):
 
 readbuffer = ''
 
-users = []
-
 while True:
     readbuffer = readbuffer + s.recv(1024)
     temp = string.split(readbuffer, '\n')
     readbuffer = temp.pop()
 
     execute_the_will_of_the_people()
+    forget_old_users()
     forget_old_votes()
 
     for line in temp:
