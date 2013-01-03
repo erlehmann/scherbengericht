@@ -157,13 +157,14 @@ def get_name_parts(name):
 readbuffer = ''
 
 while True:
-    readbuffer = readbuffer + s.recv(1024)
-    temp = string.split(readbuffer, '\n')
-    readbuffer = temp.pop()
-
     execute_the_will_of_the_people()
     forget_old_users()
     forget_old_votes()
+
+
+    readbuffer = readbuffer + s.recv(1024)
+    temp = string.split(readbuffer, '\n')
+    readbuffer = temp.pop()
 
     for line in temp:
         line = string.rstrip(line)
