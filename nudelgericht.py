@@ -224,7 +224,7 @@ while True:
                     emit("%s ist erst %d Sekunden alt und darf nicht wählen. Wahlalter: %d Sekunden." % \
                         (nickname, get_age(hostmask), VOTING_AGE_MIN))
 
-            elif 'http://www.facebook.com' in command or \
-                 'https://www.facebook.com' in command:
+            elif 'http://www.facebook.com' in line or \
+                'https://www.facebook.com' in line:
                 emit('They “trust me”. Dumb fucks.')
                 kick(nickname)
