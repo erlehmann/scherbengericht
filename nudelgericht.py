@@ -214,7 +214,7 @@ while True:
                 if argument == NICK:
                     emit('An dieser Stelle habe ich einen überflüssigen Smiley hingemacht, wofür ich mich dereinst schämen werde.')
                     kick(nickname)
-                elif argument not in users:
+                elif command == '!gegen' and argument not in users:
                     emit("%s ist nicht in %s." % (argument, CHANNEL))
                 elif old_enough_to_vote(hostmask):
                     remember_vote(argument, command[1:], hostmask)
