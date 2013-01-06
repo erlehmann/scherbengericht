@@ -25,9 +25,9 @@ from time import time, sleep
 
 HOST = "irc.freenode.net"
 PORT = 6667
-NICK = "nudelgericht"
+NICK = "rubelgericht"
 IDENT = "nudel"
-REALNAME = "Lasagna Ludolf"
+REALNAME = "Pelmeni"
 CHANNEL = "#nodrama.de"
 VOTING_QUOTA = 0.3  # proportion of voters that are needed for a vote to be successful
 VOTING_TIMEOUT = 60*3  # seconds a vote is valid
