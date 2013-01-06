@@ -224,7 +224,7 @@ while True:
                 if (argument not in users) or (argument == NICK):
                     victim = _roulette(nickname, nickname)
                 else:
-                    victim = _roulette(nickname, argument)
+                    victim = _roulette(nickname, nickname)
                 kick(victim)
                 ban(victim)
 
