@@ -20,6 +20,7 @@ import socket
 import string
 
 from math import ceil
+from random import choice
 from time import time, sleep
 
 HOST = "irc.freenode.net"
@@ -209,6 +210,23 @@ while True:
                     "Quorum: %d. " % get_voting_threshold() + \
                     "Wahlberechtigt: %s. " % ', '.join(get_adult_users())
                 )
+
+            elif command == '!roulette':
+                def _roulette(origin, target):
+                    for i in range(6):
+                        chambers = (5-i)*[False] + [True]
+                        bullet = choice(chambers)
+                        if bullet:
+                            emit('Bam!')
+                            return [origin, target][i%2]
+                        else:
+                            emit('Klick.')
+                if (argument not in users) or (argument == NICK):
+                    victim = _roulette(nickname, nickname)
+                else:
+                    victim = _roulette(nickname, argument)
+                kick(victim)
+                ban(victim)
 
             elif command in ('!für', '!gegen'):
                 if argument == NICK:
