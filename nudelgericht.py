@@ -221,12 +221,12 @@ while True:
                             return [origin, target][i%2]
                         else:
                             emit('Klick.')
-                if (argument not in users) or (argument == NICK):
+                if (argument not in users) or (argument == NICK) or \
+                    (not old_enough_to_vote(hostmask)):
                     victim = _roulette(nickname, nickname)
                 else:
-                    victim = _roulette(nickname, nickname)
+                    victim = _roulette(nickname, argument)
                 kick(victim)
-                ban(victim)
 
             elif command in ('!für', '!gegen'):
                 if argument == NICK:
@@ -234,8 +234,10 @@ while True:
                     kick(nickname)
                 elif command == '!gegen' and argument not in users:
                     emit("%s ist nicht in %s." % (argument, CHANNEL))
+                    kick(nickname)
                 elif old_enough_to_vote(hostmask):
                     remember_vote(argument, command[1:], hostmask)
                 else:
                     emit("%s ist erst %d Sekunden alt und darf nicht wählen. Wahlalter: %d Sekunden." % \
                         (nickname, get_age(hostmask), VOTING_AGE_MIN))
+                    kick(nickname)
