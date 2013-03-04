@@ -211,23 +211,6 @@ while True:
                     "Wahlberechtigt: %s. " % ', '.join(get_adult_users())
                 )
 
-            elif command == '!roulette':
-                def _roulette(origin, target):
-                    for i in range(6):
-                        chambers = (5-i)*[False] + [True]
-                        bullet = choice(chambers)
-                        if bullet:
-                            emit('Bam!')
-                            return [origin, target][i%2]
-                        else:
-                            emit('Klick.')
-                if (argument not in users) or (argument == NICK) or \
-                    (not old_enough_to_vote(hostmask)):
-                    victim = _roulette(nickname, nickname)
-                else:
-                    victim = _roulette(nickname, argument)
-                kick(victim)
-
             elif command in ('!für', '!gegen'):
                 if argument == NICK:
                     emit('An dieser Stelle habe ich einen überflüssigen Smiley hingemacht, wofür ich mich dereinst schämen werde.')
