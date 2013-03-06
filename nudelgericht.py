@@ -211,6 +211,10 @@ while True:
                     "Wahlberechtigt: %s. " % ', '.join(get_adult_users())
                 )
 
+            elif command in ('!fav', '!reply', '!retweet', '!tweet'):
+                emit('noch son post und es gibt bann, das kann ich dir jetzt schon sagen, 99% fail in einem post nice ahben wir selten hier')
+                kick(nickname)
+
             elif command in ('!für', '!gegen'):
                 if argument == NICK:
                     emit('An dieser Stelle habe ich einen überflüssigen Smiley hingemacht, wofür ich mich dereinst schämen werde.')
